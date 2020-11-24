@@ -9,90 +9,91 @@ const Timeout = require('smart-timeout');
 const Schedule = require('node-schedule');
 const Gpio = require('onoff').Gpio;
 
-module.exports = class pirMotionDetectionAutoplay {
-	constructor(context) {
-		this.context = context;
-		this.commandRouter = this.context.coreCommand;
-		this.logger = this.context.logger;
-		this.configManager = this.context.configManager;
-		this.gpioSwitch = null;
-		this.gpioLed = null;
-		this.sleepytime = false;
-	}
+module.exports = pirMotionDetectionAutoplay;
 
-	onVolumioStart() {
-		const configFile = this.commandRouter.pluginManager.getConfigurationFile(this.context,'config.json');
-		this.config = new (require('v-conf'))();
-		this.config.loadFile(configFile);
+function pirMotionDetectionAutoplay(context) {
+	this.context = context;
+	this.commandRouter = this.context.coreCommand;
+	this.logger = this.context.logger;
+	this.configManager = this.context.configManager;
+	this.gpioSwitch = null;
+	this.gpioLed = null;
+	this.sleepytime = false;
+}
 
-	  return libQ.resolve();
-	}
+pirMotionDetectionAutoplay.prototype.onVolumioStart = function() {
+	const configFile = this.commandRouter.pluginManager.getConfigurationFile(this.context,'config.json');
+	this.config = new (require('v-conf'))();
+	this.config.loadFile(configFile);
 
-	addPirWatch() {
-	  let lastMotion = null;
+	return libQ.resolve();
+}
 
-	  const watchPirSensorForContinuationMode = () => {
-	    this.gpioPir.watch((err, value) => {
-	      if (err) throw err;
+pirMotionDetectionAutoplay.prototype.addPirWatch = function() {
+	let lastMotion = null;
 
-	      this.gpioPir.unwatch();
+	const watchPirSensorForContinuationMode = () => {
+		this.gpioPir.watch((err, value) => {
+	    	if (err) throw err;
 
-	      if (!this.detectionIsActive || this.sleepytime) return;
+	    	this.gpioPir.unwatch();
 
-	      if (this.gpioLed) this.blinkLed(4);
+	    	if (!this.detectionIsActive || this.sleepytime) return;
 
-	      const { config, commandRouter } = this;
+	    	if (this.gpioLed) this.blinkLed(4);
 
-	      lastMotion = Date.now();
+	    	const { config, commandRouter } = this;
+
+	    	lastMotion = Date.now();
 
 				Timeout.set('watch', () => {
 					if (this.detectionIsActive) {
-						watchPirSensorForContinuationMode();
+					watchPirSensorForContinuationMode();
 					}
 				}, 30000);
 
 				Timeout.set('check', () => {
 					if (Date.now() < lastMotion + 30000 + config.get("duration") * 1000)
-	          return;
+	        return;
 
-	        if (config.get("random")) commandRouter.stateMachine.setRandom(false);
+	    	if (config.get("random")) commandRouter.stateMachine.setRandom(false);
 
-	        if (config.get("playlist_mode")) {
-	          commandRouter.stateMachine.pause();
-	          return this.removePlaylistTitlesFromQueue();
-	        }
-
-					// add config option for stop or pause on motion detection?
+	    	if (config.get("playlist_mode")) {
 	        commandRouter.stateMachine.pause();
+	        return this.removePlaylistTitlesFromQueue();
+	    	}
+
+			// add config option for stop or pause on motion detection?
+	    	commandRouter.stateMachine.pause();
 				}, 30000 + config.get("duration") * 1000);
 
 				let status = commandRouter.stateMachine.getState().status;
-	      if (status == "play") return;
+	    	if (status == "play") return;
 
-	      if (config.get("random")) commandRouter.stateMachine.setRandom(true);
+	    	if (config.get("random")) commandRouter.stateMachine.setRandom(true);
 
-	      if (config.get("playlist_mode")) {
-          return commandRouter.playListManager.playPlaylist(
-	          config.get("playlist")
-	        );
-	      }
+	   		if (config.get("playlist_mode")) {
+        	return commandRouter.playListManager.playPlaylist(
+	        	config.get("playlist")
+	    		);
+	    	}
 
-	      if (this.commandRouter.stateMachine.getQueue().length) {
-	        return commandRouter.stateMachine.play();
-	      }
+	    	if (this.commandRouter.stateMachine.getQueue().length) {
+	    		return commandRouter.stateMachine.play();
+	    	}
 
-	      commandRouter.pushToastMessage(
-	        "info",
-	        "PIR motion detection autoplay",
-	        "Motion detected but no items to play in queue."
-	      );
-	    });
-	  };
+	    	commandRouter.pushToastMessage(
+	        	"info",
+	        	"PIR motion detection autoplay",
+	        	"Motion detected but no items to play in queue."
+	    	);
+		});
+	};
 
-	  watchPirSensorForContinuationMode();
-	}
+	watchPirSensorForContinuationMode();
+}
 
-	onStart() {
+pirMotionDetectionAutoplay.prototype.onStart = function() {
 		const self = this;
 	  const defer = libQ.defer();
 
@@ -154,9 +155,9 @@ module.exports = class pirMotionDetectionAutoplay {
 		defer.resolve();
 
 	  return defer.promise;
-	}
+}
 
-	onStop() {
+pirMotionDetectionAutoplay.prototype.onStop = function() {
 	  const defer = libQ.defer();
 
 	  this.commandRouter.stateMachine.stop();
@@ -166,16 +167,16 @@ module.exports = class pirMotionDetectionAutoplay {
 	  defer.resolve();
 
 	  return libQ.resolve();
-	}
+}
 
-	onRestart() {
+pirMotionDetectionAutoplay.prototype.onRestart = function() {
 	  this.commandRouter.stateMachine.stop();
 	  this.freeGPIO();
-	}
+}
 
 	// GPIO handling -------------------------------------------------------------------------------------
 
-	initGPIO() {
+pirMotionDetectionAutoplay.prototype.initGPIO = function() {
 	  if (this.config.get("gpio_pir") > 0) {
 	    this.gpioPir = new Gpio(this.config.get("gpio_pir"), "in", "rising");
 	  }
@@ -190,9 +191,9 @@ module.exports = class pirMotionDetectionAutoplay {
 	    this.gpioLed = new Gpio(this.config.get("gpio_led"), "out");
 	    this.gpioLed.writeSync(this.detectionIsActive);
 	  }
-	}
+}
 
-	freeGPIO() {
+pirMotionDetectionAutoplay.prototype.freeGPIO = function() {
 	  if (this.gpioPir) {
 	    this.gpioPir.unexport();
 	    this.gpioPir = null;
@@ -208,9 +209,9 @@ module.exports = class pirMotionDetectionAutoplay {
 	    this.gpioLed.unexport();
 	    this.gpioLed = null;
 	  }
-	}
+}
 
-	pirTest() {
+pirMotionDetectionAutoplay.prototype.pirTest = function() {
 	  this.commandRouter.pushToastMessage(
 	    "success",
 	    "PIR motion detection autoplay",
@@ -243,10 +244,10 @@ module.exports = class pirMotionDetectionAutoplay {
 	  }, 60000);
 
 	  return libQ.resolve();
-	}
+}
 
-	blinkLed(count) {
-		const self = this;
+pirMotionDetectionAutoplay.prototype.blinkLed = function(count) {
+	   const self = this;
 	  (function blink(count) {
 	    if (count <= 0) {
 	      self.gpioLed.writeSync(self.detectionIsActive);
@@ -260,11 +261,11 @@ module.exports = class pirMotionDetectionAutoplay {
 	    });
 	    setTimeout(() => blink(count - 1), 200);
 	  })(count);
-	}
+}
 
 	// Configuration Methods -----------------------------------------------------------------------------
 
-	saveConfig(data) {
+pirMotionDetectionAutoplay.prototype.saveConfig = function(data) {
 		if(data['enable_timeframe']
 			&& (!data['timeframe_start_hour'].value	|| !data['timeframe_end_hour'].value)) {
 			this.commandRouter.pushToastMessage('error',
@@ -302,9 +303,9 @@ module.exports = class pirMotionDetectionAutoplay {
 			'PIR motion detection autoplay',
 			this.commandRouter.getI18nString('COMMON.SETTINGS_SAVED_SUCCESSFULLY')
 		);
-	}
+}
 
-	getLabelForSelect(options, key) {
+pirMotionDetectionAutoplay.prototype.getLabelForSelect = function(options, key) {
 		const n = options.length;
 		for (let i = 0; i < n; i++) {
 			if (options[i].value == key)
@@ -312,56 +313,56 @@ module.exports = class pirMotionDetectionAutoplay {
 		}
 
 		return 'VALUE NOT FOUND BETWEEN SELECT OPTIONS!';
-	}
+}
 
-	getUIConfig() {
-		const self = this;
-	  const defer = libQ.defer();
-	  const lang_code = this.commandRouter.sharedVars.get('language_code');
-		const { config, configManager } = this;
+pirMotionDetectionAutoplay.prototype.getUIConfig = function() {
+	const self = this;
+	const defer = libQ.defer();
+	const lang_code = this.commandRouter.sharedVars.get('language_code');
+	const { config, configManager } = this;
 
-	  this.commandRouter
-		  .i18nJson(
-				__dirname+'/i18n/strings_'+lang_code+'.json',
-	      __dirname+'/i18n/strings_en.json',
-	      __dirname + '/UIConfig.json')
-	    .then(function(uiconf) {
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[0].value', config.get('gpio_pir', false));
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[2].value', config.get('playlist_mode', false));
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[3].value', config.get('playlist', false));
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[4].value', config.get('random', false));
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[5].config.bars[0].value', config.get('duration', false));
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[6].value', config.get('enable_switch', false));
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[7].value', config.get('gpio_switch', false));
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[8].value', config.get('enable_led', false));
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[9].value', config.get('gpio_led', false));
-				configManager.setUIConfigParam(uiconf, 'sections[0].content[10].value', config.get('enable_timeframe', false));
-				self.configManager.setUIConfigParam(uiconf,
-					'sections[0].content[11].value.label',
-					self.getLabelForSelect(
-						self.configManager.getValue(uiconf, 'sections[0].content[11].options'),
-						config.get('timeframe_start_hour'),
-					)
-				);
-				self.configManager.setUIConfigParam(uiconf,
-					'sections[0].content[12].value.label',
-					self.getLabelForSelect(
-						self.configManager.getValue(uiconf, 'sections[0].content[12].options'),
-						config.get('timeframe_end_hour'),
-					)
-				);
-				defer.resolve(uiconf);
-			})
-			.fail(function() {
-				defer.reject(new Error());
-			});
+	this.commandRouter
+		.i18nJson(
+			__dirname+'/i18n/strings_'+lang_code+'.json',
+	    __dirname+'/i18n/strings_en.json',
+	    __dirname + '/UIConfig.json')
+		.then(function(uiconf) {
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[0].value', config.get('gpio_pir', false));
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[2].value', config.get('playlist_mode', false));
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[3].value', config.get('playlist', false));
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[4].value', config.get('random', false));
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[5].config.bars[0].value', config.get('duration', false));
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[6].value', config.get('enable_switch', false));
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[7].value', config.get('gpio_switch', false));
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[8].value', config.get('enable_led', false));
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[9].value', config.get('gpio_led', false));
+			configManager.setUIConfigParam(uiconf, 'sections[0].content[10].value', config.get('enable_timeframe', false));
+			self.configManager.setUIConfigParam(uiconf,
+				'sections[0].content[11].value.label',
+				self.getLabelForSelect(
+					self.configManager.getValue(uiconf, 'sections[0].content[11].options'),
+					config.get('timeframe_start_hour'),
+				)
+			);
+			self.configManager.setUIConfigParam(uiconf,
+				'sections[0].content[12].value.label',
+				self.getLabelForSelect(
+					self.configManager.getValue(uiconf, 'sections[0].content[12].options'),
+					config.get('timeframe_end_hour'),
+				)
+			);
+			defer.resolve(uiconf);
+		})
+		.fail(function() {
+			defer.reject(new Error());
+		});
 
-		return defer.promise;
-	}
+	return defer.promise;
+}
 
 	// Playback Controls ---------------------------------------------------------------------------------------
 
-	removePlaylistTitlesFromQueue() {
+pirMotionDetectionAutoplay.prototype.removePlaylistTitlesFromQueue = function() {
 		const { config, commandRouter } = this;
 
 		const playlistContentPromise = commandRouter.playListManager.getPlaylistContent(config.get('playlist'));
@@ -377,5 +378,4 @@ module.exports = class pirMotionDetectionAutoplay {
 				}
 			});
 		});
-	}
 }
