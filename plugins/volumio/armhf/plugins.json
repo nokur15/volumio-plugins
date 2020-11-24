@@ -394,6 +394,24 @@
 						}
 					],
 					"updated": "18-11-2017"
+				},
+				{
+					"prettyName": "study_comp",
+					"icon": "fa-lightbulb-o",
+					"name": "study_comp",
+					"version": "1.0.0",
+					"url": "http://volumio.github.io/volumio-plugins/plugins/volumio/armhf/system_controller/study_comp/study_comp.zip",
+					"license": "ISC",
+					"description": "The plugin that's able to start playing a song as soon as the person started to sit and study. The playlist is selected beforehand from the UI.",
+					"details": "test_pertama",
+					"author": "YoungStorm",
+					"screenshots": [
+						{
+							"image": "",
+							"thumb": ""
+						}
+					],
+					"updated": "24-11-2020"
 				}
 			]
 		},
