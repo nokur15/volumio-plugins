@@ -2,9 +2,9 @@
 
 var libQ = require('kew');
 var fs=require('fs-extra');
-var config = new (require('v-conf'))();
-var exec = require('child_process').exec;
-var execSync = require('child_process').execSync;
+//var config = new (require('v-conf'))();
+//var exec = require('child_process').exec;
+//var execSync = require('child_process').execSync;
 var Gpio = require('onoff').Gpio;
 var io = require('socket.io-client');
 var socket = io.connect('http://localhost:3000');
@@ -18,11 +18,11 @@ module.exports = studyComp;
 function studyComp(context) {
 	var self = this;
 
-	this.context = context;
-	this.commandRouter = this.context.coreCommand;
-	this.logger = this.context.logger;
-	this.configManager = this.context.configManager;
-	this.triggers = [];
+	self.context = context;
+	self.commandRouter = self.context.coreCommand;
+	self.logger = self.context.logger;
+	self.configManager = self.context.configManager;
+	self.triggers = [];
 
 }
 
@@ -31,11 +31,11 @@ function studyComp(context) {
 studyComp.prototype.onVolumioStart = function()
 {
 	var self = this;
-	var configFile=this.commandRouter.pluginManager.getConfigurationFile(this.context,'config.json');
-	this.config = new (require('v-conf'))();
-	this.config.loadFile(configFile);
+	var configFile=self.commandRouter.pluginManager.getConfigurationFile(this.context,'config.json');
+	self.config = new (require('v-conf'))();
+	self.config.loadFile(configFile);
 
-	this.logger.info("Study Companion initialized");
+	self.logger.info("Study Companion initialized");
 
     return libQ.resolve();
 }
@@ -46,9 +46,9 @@ studyComp.prototype.onStart = function() {
 
 
 	// Once the Plugin has successfull started resolve the promise
-	this.createTriggers()
+	self.createTriggers()
 		.then (function(result) {
-			this.logger.info("Study Companion Started");
+			self.logger.info("Study Companion Started");
 			defer.resolve();
 		});
 	
@@ -61,9 +61,9 @@ studyComp.prototype.onStop = function() {
     var defer=libQ.defer();
 
     // Once the Plugin has successfull stopped resolve the promise
-	this.clearTriggers()
+	self.clearTriggers()
 		.then (function(result){
-			this.logger.info("Study Companion Stopped");
+			self.logger.info("Study Companion Stopped");
 			defer.resolve()
 		});
 
@@ -82,9 +82,10 @@ studyComp.prototype.getUIConfig = function() {
     var defer = libQ.defer();
 	var self = this;
 	
-	this.logger.info('Study Comp: Getting UI config')
+	self.logger.info('Study Comp: Getting UI config')
 
-    var lang_code = this.commandRouter.sharedVars.get('language_code');
+    //var lang_code = self.commandRouter.sharedVars.get('language_code');
+	var lang_code = 'en';
 
     self.commandRouter.i18nJson(__dirname+'/i18n/strings_'+lang_code+'.json',
         __dirname+'/i18n/strings_en.json',
@@ -99,9 +100,9 @@ studyComp.prototype.getUIConfig = function() {
 
 					//accessor supposes action and uiconfig itens are in the SAME order
 					//this is potentially dangerous: rewrite with a JSON search of "id" value ?
-					uiconf.sections[0].context[2*i].value = this.config.get(c1);
-					uiconf.sections[0].context[2*i+1].value.value = this.config.get(c2);
-					uiconf.sections[0].context[2*i+1].value.label = this.config.get(c2).toString();
+					uiconf.sections[0].context[2*i].value = self.config.get(c1);
+					uiconf.sections[0].context[2*i+1].value.value = self.config.get(c2);
+					uiconf.sections[0].context[2*i+1].value.label = self.config.get(c2).toString();
 
 					i = i+1;
 				});
@@ -129,34 +130,34 @@ studyComp.prototype.saveConfig = function(data) {
 		var c2 = action.concat('.pin');
 		var c3 = action.concat('.value');
 
-		this.config.set(c1, data[s1]);
-		this.config.set(c2, data[s2]['value']);
-		this.config.set(c3, 0);
+		self.config.set(c1, data[s1]);
+		self.config.set(c2, data[s2]['value']);
+		self.config.set(c3, 0);
 	});
 
-	this.clearTriggers()
-		.then(this.createTriggers());
+	self.clearTriggers()
+		.then(self.createTriggers());
 	
-	this.commandRouter.pushToastMessage('success',"Study Comp","Configuration Saved");
+	self.commandRouter.pushToastMessage('success',"Study Comp","Configuration Saved");
 }
 
 studyComp.prototype.createTriggers = function() {
 	var self = this;
 
-	this.logger.info('Study Comp: Reading config and creating triggers...');
+	self.logger.info('Study Comp: Reading config and creating triggers...');
 
 	actions.forEach(function(action, index, array) {
 		var c1 = action.concat('.enabled');
 		var c2 = action.concat('.pin');
 
-		var enabled = this.config.get(c1);
-		var pin = this.config.get(c2);
+		var enabled = self.config.get(c1);
+		var pin = self.config.get(c2);
 
 		if(enabled === true){
-			this.logger.info('Study Comp: '+ action + ' on pin ' + pin);
+			self.logger.info('Study Comp: '+ action + ' on pin ' + pin);
 			var j = new Gpio(pin,'in','rising', {debounceTimeout: 250});
-			j.watch(this.listener.bind(self,action));
-			this.triggers.push(j);
+			j.watch(self.listener.bind(self,action));
+			self.triggers.push(j);
 		}
 	});
 		
@@ -166,14 +167,14 @@ studyComp.prototype.createTriggers = function() {
 studyComp.prototype.clearTriggers = function () {
 	var self = this;
 	
-	this.triggers.forEach(function(trigger, index, array) {
-  		this.logger.info("Study Comp: Destroying trigger " + index);
+	self.triggers.forEach(function(trigger, index, array) {
+  		self.logger.info("Study Comp: Destroying trigger " + index);
 
 		trigger.unwatchAll();
 		trigger.unexport();		
 	});
 	
-	this.triggers = [];
+	self.triggers = [];
 
 	return libQ.resolve();	
 };
@@ -182,7 +183,7 @@ studyComp.prototype.listener = function(action,err,value){
 	var self = this;
 	
 	// we now debounce the button, so no need to check for the value
-	this[action]();
+	self[action]();
 };
 
 studyComp.prototype.getConfigurationFiles = function() {
